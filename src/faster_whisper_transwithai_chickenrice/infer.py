@@ -1183,6 +1183,9 @@ def main():
 
     args = parse_arguments()
 
+    # fix windows gbk pipe issue
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
     # Display open-source notice
     print("=" * 70)
     print("⚠️  重要声明 / IMPORTANT NOTICE")
