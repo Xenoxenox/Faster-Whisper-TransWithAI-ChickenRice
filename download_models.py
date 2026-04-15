@@ -459,13 +459,11 @@ Examples:
         print(f"\n{CHECKMARK} Model {args.hf_model} already present")
         hf_exists = True
 
-    # If everything exists and no force flag, ask user
+    # If everything exists and no force flag, skip silently (non-interactive for container usage)
     all_exists = vad_exists and (not args.hf_model or hf_exists) and (args.skip_whisper_base or whisper_base_exists)
     if all_exists and not args.force:
-        response = input("\nAll required models are present. Re-download? (y/N): ").strip().lower()
-        if response != "y":
-            print("Skipping download.")
-            return 0
+        print("\nAll required models are present. Skipping download.")
+        return 0
 
     # Download models
 

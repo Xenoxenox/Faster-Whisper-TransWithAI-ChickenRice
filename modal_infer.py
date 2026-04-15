@@ -668,8 +668,15 @@ def _remote_pipeline(job: dict) -> dict:
     if model_profile.get("hf_repo"):
         target_dir = model_profile["target_dir"]
         model_path = repo_dir / "models" / target_dir
-        if not model_path.exists():
-            log(f"模型 {model_profile['hf_repo']} 缺失，开始下载...")
+        # 检查目录是否存在且包含实际权重文件（model.bin 或 *.safetensors）
+        # 仅目录存在但无权重文件时也触发重新下载（防止目录为空或下载中断）
+        has_weights = model_path.exists() and (
+            (model_path / "model.bin").exists()
+            or bool(list(model_path.glob("*.safetensors")))
+        )
+        if not has_weights:
+            log(f"模型 {model_profile['hf_repo']} 缺失或不完整（无权重文件），开始下载...")
+            log(f"  目标目录: {model_path}, exists={model_path.exists()}")
             cmd = [
                 "python",
                 str(repo_dir / "download_models.py"),
