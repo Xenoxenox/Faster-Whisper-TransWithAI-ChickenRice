@@ -50,7 +50,7 @@ except ImportError:  # pragma: no cover
     raise
 
 APP_NAME = "Faster-Whisper-TransWithAI-ChickenRice"
-REPO_URL = "https://github.com/TransWithAI/Faster-Whisper-TransWithAI-ChickenRice"
+REPO_URL = "https://github.com/Xenoxenox/Faster-Whisper-TransWithAI-ChickenRice"
 VOLUME_NAME = "Faster_Whisper"
 VOLUME_ROOT = "/Faster_Whisper"
 REMOTE_MOUNT = VOLUME_ROOT

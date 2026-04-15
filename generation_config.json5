@@ -31,6 +31,12 @@
 
     "repetition_penalty": 1.1,
 
+    // 转录任务配置
+    // Task: "transcribe" 保留原文, "translate" 翻译为英文
+    "task": "transcribe",
+    // 音频语言（whisper-large-v2 的原生推断语言）
+    "language": "ja",
+
     // 字幕后处理：合并重复/重叠片段，避免字幕时间轴过长
     // Subtitle post-processing: merge repeated/overlapping segments and avoid overly long timelines
     "segment_merge": {
