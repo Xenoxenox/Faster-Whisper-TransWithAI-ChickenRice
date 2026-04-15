@@ -176,7 +176,7 @@ MODEL_PRESETS: dict[str, ModelProfile] = {
         key="base",
         label="基础版（whisper-base, CTranslate2）",
         hf_repo="Systran/faster-whisper-base",
-        target_dir="whisper-base",
+        target_dir="whisper-base-ct2",
         description="适合低显存/快速校验",
     ),
     "custom": ModelProfile(

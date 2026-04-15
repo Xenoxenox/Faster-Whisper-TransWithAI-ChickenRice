@@ -376,10 +376,11 @@ def verify_hf_model(repo_id: str, target_dir: str | None = None):
     # Check if at least one weight file exists
     has_model = any(f in found_files for f in weight_files)
 
-    if not has_model and found_files:
-        print(f"  {WARNING} Warning: No weight files (model.bin/.safetensors) found, only config/tokenizer files")
-    elif not found_files:
-        print(f"  {CROSS} No files found in model directory")
+    if not has_model:
+        if found_files:
+            print(f"  {WARNING} Warning: Only config/tokenizer files found, no weight files (model.bin/.safetensors)")
+        else:
+            print(f"  {CROSS} No files found in model directory")
         return False
 
     return True
@@ -440,52 +441,50 @@ Examples:
     models_dir = Path("models")
     models_dir.mkdir(exist_ok=True)
 
-    # Check if VAD model already exists
-    if not args.force and not args.skip_vad and verify_vad_model():
+    # ── 各组件独立检测，互不干扰 ────────────────────────────────────────────────
+
+    # VAD model
+    vad_exists = not args.force and not args.skip_vad and verify_vad_model()
+    if vad_exists:
         print(f"\n{CHECKMARK} VAD model files already present")
-        vad_exists = True
-    else:
-        vad_exists = False
 
-    # Check if whisper-base feature extractor already exists
-    whisper_base_exists = False
-    if not args.skip_whisper_base and not args.force and verify_whisper_base_feature_extractor():
+    # whisper-base feature extractor
+    whisper_base_exists = not args.force and not args.skip_whisper_base and verify_whisper_base_feature_extractor()
+    if whisper_base_exists:
         print(f"\n{CHECKMARK} Whisper-base feature extractor files already present")
-        whisper_base_exists = True
 
-    # Check if HF model already exists (if specified)
-    hf_exists = False
-    if args.hf_model and not args.force and verify_hf_model(args.hf_model, args.target_dir):
+    # HF model weights（权重文件必须存在才算"已就绪"）
+    hf_exists = bool(args.hf_model) and not args.force and verify_hf_model(args.hf_model, args.target_dir)
+    if hf_exists:
         print(f"\n{CHECKMARK} Model {args.hf_model} already present")
-        hf_exists = True
 
-    # If everything exists and no force flag, skip silently (non-interactive for container usage)
-    all_exists = vad_exists and (not args.hf_model or hf_exists) and (args.skip_whisper_base or whisper_base_exists)
-    if all_exists and not args.force:
+    # 全部就绪才跳过（各组件缺失时仍会进入下载阶段）
+    all_exists = (
+        vad_exists
+        and (not args.hf_model or hf_exists)
+        and (args.skip_whisper_base or whisper_base_exists)
+    )
+    if all_exists:
         print("\nAll required models are present. Skipping download.")
         return 0
 
-    # Download models
+    # ── 按需下载各组件（file-level 幂等，已存在的文件自动跳过）─────────────────
 
-    # Always download VAD model (unless explicitly skipped)
-    if not args.skip_vad:
+    if not args.skip_vad and not vad_exists:
         if not download_vad_model():
             print(f"{WARNING} Error: VAD model is required and could not be downloaded")
-    else:
+    elif args.skip_vad:
         print(f"\n{WARNING} Skipping VAD model download (not recommended)")
 
-    # Download whisper-base feature extractor (unless explicitly skipped)
-    if not args.skip_whisper_base:
+    if not args.skip_whisper_base and not whisper_base_exists:
         if not download_whisper_base_for_feature_extractor():
             print(f"{WARNING} Warning: Whisper-base feature extractor could not be downloaded completely")
-            # Don't fail completely if feature extractor download has issues
-    else:
+    elif args.skip_whisper_base:
         print(f"\n{WARNING} Skipping whisper-base download (not recommended for offline usage)")
 
-    # Download HuggingFace model if specified
-    if args.hf_model and not download_hf_model(args.hf_model, args.target_dir):
-        print(f"{WARNING} Warning: Model {args.hf_model} could not be downloaded completely")
-        # Don't fail completely if HF model download has issues
+    if args.hf_model and not hf_exists:
+        if not download_hf_model(args.hf_model, args.target_dir):
+            print(f"{WARNING} Warning: Model {args.hf_model} could not be downloaded completely")
 
     # Final verification
     print("\n" + "=" * 60)
