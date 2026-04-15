@@ -363,8 +363,8 @@ def verify_hf_model(repo_id: str, target_dir: str | None = None):
 
     print(f"\n{SEARCH} Verifying model files in {models_dir}...")
 
-    # Check for common model files
-    common_files = ["config.json", "model.bin", "pytorch_model.bin", "model.safetensors", "model.onnx"]
+    # Check for actual weight files only (config.json alone is NOT sufficient)
+    weight_files = ["model.bin", "pytorch_model.bin", "model.safetensors", "model.onnx"]
     found_files = []
 
     for file in models_dir.iterdir():
@@ -373,11 +373,11 @@ def verify_hf_model(repo_id: str, target_dir: str | None = None):
             print(f"  {CHECKMARK} {file.name} ({size_mb:.1f} MB)")
             found_files.append(file.name)
 
-    # Check if at least one model file exists
-    has_model = any(f in found_files for f in common_files)
+    # Check if at least one weight file exists
+    has_model = any(f in found_files for f in weight_files)
 
     if not has_model and found_files:
-        print(f"  {WARNING} Warning: No common model files found, but other files exist")
+        print(f"  {WARNING} Warning: No weight files (model.bin/.safetensors) found, only config/tokenizer files")
     elif not found_files:
         print(f"  {CROSS} No files found in model directory")
         return False
