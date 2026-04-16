@@ -197,3 +197,5 @@ Thumbs.db
 desktop.ini
 
 models/
+
+.firecrawl/
