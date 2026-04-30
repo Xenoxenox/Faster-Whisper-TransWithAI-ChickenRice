@@ -656,8 +656,23 @@ def _remote_pipeline(job: dict) -> dict:
             fh.write(line + "\n")
 
     if not (repo_dir / ".git").exists():
+        # 目录存在但无 .git（如 clear_volume_repo --keep-models 后），
+        # 需要先移走 models 再删除目录，否则 git clone 无法写入非空目录。
+        models_dir = repo_dir / "models"
+        tmp_models = repo_dir.parent / "_models_backup"
+        if repo_dir.exists():
+            import shutil
+            if models_dir.exists():
+                log("临时移走 models 目录...")
+                if tmp_models.exists():
+                    shutil.rmtree(tmp_models)
+                models_dir.rename(tmp_models)
+            shutil.rmtree(repo_dir)
         log("开始克隆仓库...")
         run(["git", "clone", "--depth", "1", REPO_URL, str(repo_dir)])
+        if tmp_models.exists():
+            log("恢复 models 目录...")
+            tmp_models.rename(models_dir)
     else:
         log("更新仓库...")
         run(["git", "-C", str(repo_dir), "fetch", "origin"])
