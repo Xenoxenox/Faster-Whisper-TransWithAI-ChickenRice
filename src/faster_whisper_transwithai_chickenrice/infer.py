@@ -753,7 +753,7 @@ class Inference:
         if not self.enable_batching:
             return 0
 
-        _, BatchedInferencePipelineCls = _require_faster_whisper()
+        WhisperModelCls, BatchedInferencePipelineCls = _require_faster_whisper()
 
         logger.info(_("batch.finding_optimal", min_size=min_batch_size, max_size=max_batch_size))
 
