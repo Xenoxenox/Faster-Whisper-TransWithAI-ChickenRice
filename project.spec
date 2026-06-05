@@ -364,15 +364,19 @@ for package in ['pyjson5', 'scipy', 'soundfile', 'audioread', 'resampy', 'numba'
     except:
         pass
 
-# Collect setuptools and pkg_resources data to fix missing modules
-try:
-    from PyInstaller.utils.hooks import collect_data_files
-    setuptools_datas = collect_data_files('setuptools')
-    datas += setuptools_datas
-    pkg_resources_datas = collect_data_files('pkg_resources')
-    datas += pkg_resources_datas
-except:
-    pass
+# Collect setuptools/pkg_resources code and metadata. CTranslate2 3.24.0
+# (CUDA 11.8 build) imports pkg_resources at runtime, but PyInstaller can miss
+# it because the import happens behind the compiled extension package.
+for package in ['setuptools', 'pkg_resources']:
+    try:
+        pkg_datas, pkg_binaries, pkg_hiddenimports = collect_all(package)
+        datas += pkg_datas
+        binaries += pkg_binaries
+        hiddenimports += pkg_hiddenimports
+        hiddenimports += collect_submodules(package)
+        print(f"Collected {package} module successfully")
+    except Exception as e:
+        print(f"Warning: could not collect {package}: {e}")
 
 # Explicitly collect backports module to fix ModuleNotFoundError
 try:
@@ -424,8 +428,11 @@ hiddenimports += [
     'av.audio',
     'av.container',
     'av.stream',
+    'pkg_resources',
     'pkg_resources.extern',
     'pkg_resources._vendor',
+    'setuptools',
+    'setuptools._vendor',
     'packaging',
     'packaging.version',
     'packaging.specifiers',

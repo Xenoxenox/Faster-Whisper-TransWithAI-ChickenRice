@@ -196,4 +196,7 @@ uv.lock
 Thumbs.db
 desktop.ini
 
+# omo
+.omo/
+
 models/

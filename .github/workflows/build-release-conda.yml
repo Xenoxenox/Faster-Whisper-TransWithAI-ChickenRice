@@ -553,6 +553,23 @@ jobs:
         fi
 
         echo ""
+        echo "Testing infer.exe CTranslate2 runtime import..."
+        set +e
+        CT2_OUTPUT=$(./infer.exe --log_level ERROR __pyinstaller_ct2_smoke_missing__ 2>&1)
+        CT2_STATUS=$?
+        set -e
+        echo "$CT2_OUTPUT"
+        if [ $CT2_STATUS -ne 0 ]; then
+          echo "✗ infer.exe failed while importing CTranslate2"
+          exit 1
+        fi
+        if echo "$CT2_OUTPUT" | grep -q "Failed to import ctranslate2"; then
+          echo "✗ CTranslate2 import failed inside infer.exe"
+          exit 1
+        fi
+        echo "✓ CTranslate2 imported successfully inside infer.exe"
+
+        echo ""
         echo "Testing modal_infer.exe --help..."
         MODAL_OUTPUT=$(./modal_infer.exe --help 2>&1)
         echo "$MODAL_OUTPUT"
