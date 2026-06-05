@@ -146,7 +146,9 @@ class ModernI18n:
         self.default_locale = default_locale
         self.fallback_locale = fallback_locale
         self._translations: dict[str, dict[str, Any]] = {}
-        self._current_locale: str | None = None
+        # Always set to a concrete locale by set_locale() below; default to the
+        # fallback so it is never None for type-checking purposes.
+        self._current_locale: str = fallback_locale
 
         # Auto-detect and set locale
         detected = self._detect_locale()
@@ -158,7 +160,8 @@ class ModernI18n:
         if getattr(sys, "frozen", False):
             # Running from executable
             # sys._MEIPASS is the temporary folder where PyInstaller extracts files
-            base_path = Path(sys._MEIPASS)
+            # (injected at runtime by PyInstaller; not present in type stubs).
+            base_path = Path(sys._MEIPASS)  # type: ignore[attr-defined]
             possible_paths = [
                 base_path / "locales",
                 Path(sys.executable).parent / "locales",
@@ -268,7 +271,7 @@ class ModernI18n:
     def _get_nested_value(self, data: dict[str, Any], key: str) -> Any:
         """Get value from nested dict using dot notation."""
         keys = key.split(".")
-        value = data
+        value: Any = data
 
         for k in keys:
             if isinstance(value, dict):

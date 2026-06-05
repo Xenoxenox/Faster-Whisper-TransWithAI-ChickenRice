@@ -7,22 +7,32 @@ Includes CUDA runtime libraries for GPU acceleration
 import os
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
-# Import the download_models functions
+# Import the download_models functions (only present when download_models.py is available).
+download_vad_model: Callable[[], Any] | None = None
+download_whisper_base_for_feature_extractor: Callable[[], Any] | None = None
+verify_vad_model: Callable[[], Any] | None = None
+verify_whisper_base_feature_extractor: Callable[[], Any] | None = None
+
 try:
+    from download_models import download_vad_model as _download_vad_model
     from download_models import (
-        download_vad_model,
-        download_whisper_base_for_feature_extractor,
-        verify_vad_model,
-        verify_whisper_base_feature_extractor,
+        download_whisper_base_for_feature_extractor as _download_whisper_base_for_feature_extractor,
     )
+    from download_models import verify_vad_model as _verify_vad_model
+    from download_models import (
+        verify_whisper_base_feature_extractor as _verify_whisper_base_feature_extractor,
+    )
+
+    download_vad_model = _download_vad_model
+    download_whisper_base_for_feature_extractor = _download_whisper_base_for_feature_extractor
+    verify_vad_model = _verify_vad_model
+    verify_whisper_base_feature_extractor = _verify_whisper_base_feature_extractor
 except ImportError:
     print("Warning: download_models.py not found, skipping model download")
-    download_vad_model = None
-    download_whisper_base_for_feature_extractor = None
-    verify_vad_model = None
-    verify_whisper_base_feature_extractor = None
 
 
 def find_cuda_libs():
@@ -139,8 +149,8 @@ def download_models_if_needed():
 
     print("\n📦 Checking models...")
 
-    # Check VAD model (always required)
-    vad_ok = verify_vad_model() if verify_vad_model else False
+    # Check VAD model (always required); verify_vad_model is guaranteed non-None by the guard above.
+    vad_ok = verify_vad_model()
     # Check whisper-base feature extractor (required for offline usage)
     whisper_base_ok = verify_whisper_base_feature_extractor() if verify_whisper_base_feature_extractor else False
 
@@ -163,7 +173,7 @@ def download_models_if_needed():
         print("❌ Failed to download whisper-base feature extractor")
 
     # Final verification
-    final_vad_ok = verify_vad_model() if verify_vad_model else False
+    final_vad_ok = verify_vad_model()
     final_whisper_base_ok = verify_whisper_base_feature_extractor() if verify_whisper_base_feature_extractor else False
 
     if final_vad_ok and final_whisper_base_ok:

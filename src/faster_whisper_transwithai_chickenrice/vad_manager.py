@@ -363,8 +363,8 @@ def get_speech_timestamps_onnx(
 
     # Track speech segments
     triggered = False
-    speeches = []
-    current_speech = {}
+    speeches: list[dict[str, float]] = []
+    current_speech: dict[str, float] = {}
     current_probs = []  # Track probabilities for current segment
     temp_end = 0
 
@@ -416,7 +416,9 @@ def get_speech_timestamps_onnx(
                 if current_speech["end"] - current_speech["start"] >= min_speech_frames:
                     # Calculate probability statistics for segment
                     if current_probs:
-                        current_speech["probability"] = np.mean(current_probs[: temp_end - current_speech["start"]])
+                        current_speech["probability"] = np.mean(
+                            current_probs[: temp_end - int(current_speech["start"])]
+                        )
                     speeches.append(current_speech)
 
                 current_speech = {}
@@ -499,12 +501,12 @@ class WhisperVadModel:
         self,
         audio: np.ndarray,
         sampling_rate: int = 16000,
-        threshold: float = None,
-        min_speech_duration_ms: int = None,
-        max_speech_duration_s: float = None,
-        min_silence_duration_ms: int = None,
-        speech_pad_ms: int = None,
-        neg_threshold: float = None,
+        threshold: float | None = None,
+        min_speech_duration_ms: int | None = None,
+        max_speech_duration_s: float | None = None,
+        min_silence_duration_ms: int | None = None,
+        speech_pad_ms: int | None = None,
+        neg_threshold: float | None = None,
         **kwargs,
     ) -> list[dict[str, Any]]:
         """
@@ -612,7 +614,7 @@ class VadModelManager:
         # Since models are now instance variables, return the known model types
         return ["whisper_vad"]
 
-    def get_device(self, model_id: str = None) -> str:
+    def get_device(self, model_id: str | None = None) -> str:
         """Get the device being used for VAD processing."""
         if model_id is None:
             model_id = self.config.default_model

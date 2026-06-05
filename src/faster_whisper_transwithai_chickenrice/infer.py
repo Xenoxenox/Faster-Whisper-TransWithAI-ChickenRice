@@ -24,19 +24,18 @@ import pyjson5
 _FASTER_WHISPER_IMPORT_ERROR = None
 _CTRANSLATE2_IMPORT_ERROR = None
 
-WhisperModel = None
-BatchedInferencePipeline = None
-ctranslate2 = None
-
 try:
     from faster_whisper import BatchedInferencePipeline, WhisperModel
 except Exception as e:
     _FASTER_WHISPER_IMPORT_ERROR = e
+    WhisperModel = None
+    BatchedInferencePipeline = None
 
 try:
     import ctranslate2
 except Exception as e:
     _CTRANSLATE2_IMPORT_ERROR = e
+    ctranslate2 = None
 
 # Import our VAD injection system
 # Import modern i18n module for translations
@@ -60,7 +59,7 @@ def _require_ctranslate2():
 
 
 def _require_faster_whisper():
-    if WhisperModel is None:
+    if WhisperModel is None or BatchedInferencePipeline is None:
         raise RuntimeError(
             f"Failed to import faster_whisper. This build may be missing required runtime libraries. "
             f"Original error: {_FASTER_WHISPER_IMPORT_ERROR}"
@@ -438,7 +437,7 @@ class Inference:
     def _load_generation_config(self, args) -> tuple[dict[str, Any], SegmentMergeOptions]:
         """Load and process generation configuration"""
         # Default config
-        config = {
+        config: dict[str, Any] = {
             "language": "ja",
             "task": "translate",
             "vad_filter": True,

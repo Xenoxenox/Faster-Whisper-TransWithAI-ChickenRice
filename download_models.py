@@ -77,7 +77,7 @@ if sys.platform == "win32" and not USE_UNICODE:
         pass  # If this fails, we'll use ASCII symbols anyway
 
 
-def download_file(url: str, dest_path: Path, session: requests.Session = None) -> bool:
+def download_file(url: str, dest_path: Path, session: requests.Session | None = None) -> bool:
     """Download a file with progress indicator"""
     if session is None:
         session = requests.Session()

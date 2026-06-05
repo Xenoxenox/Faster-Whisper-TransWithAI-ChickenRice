@@ -37,11 +37,11 @@ def ensure_utf8_stdio() -> None:
 ensure_utf8_stdio()
 
 try:
-    import questionary  # type: ignore
-    from questionary import Choice  # type: ignore
+    import questionary
+    from questionary import Choice
 except ImportError:  # pragma: no cover
-    questionary = None  # type: ignore
-    Choice = None  # type: ignore
+    questionary = None
+    Choice = None
 
 try:
     import modal
