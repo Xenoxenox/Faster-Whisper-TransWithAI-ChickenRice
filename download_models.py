@@ -84,6 +84,16 @@ DOWNLOAD_MAX_RETRIES = 5
 DOWNLOAD_RETRY_BACKOFF_SECONDS = 1.0
 DOWNLOAD_MAX_RETRY_DELAY_SECONDS = 30.0
 
+HF_HOST = "https://huggingface.co/"
+HF_MIRROR_HOST = "https://hf-mirror.com/"
+
+
+def _mirror_url(url: str) -> str | None:
+    """Return the hf-mirror.com equivalent of a huggingface.co URL, if applicable."""
+    if url.startswith(HF_HOST):
+        return HF_MIRROR_HOST + url[len(HF_HOST) :]
+    return None
+
 
 def _get_429_retry_delay(response: requests.Response, retry_index: int) -> float:
     retry_after = response.headers.get("Retry-After")
@@ -106,20 +116,9 @@ def _get_429_retry_delay(response: requests.Response, retry_index: int) -> float
     return min(exponential_delay, DOWNLOAD_MAX_RETRY_DELAY_SECONDS)
 
 
-def download_file(url: str, dest_path: Path, session: requests.Session | None = None) -> bool:
-    """Download a file with progress indicator"""
-    if session is None:
-        session = requests.Session()
-
+def _download_from_url(url: str, dest_path: Path, session: requests.Session) -> bool:
+    """Download a single file from one URL, retrying on HTTP 429. Returns True on success."""
     try:
-        # Create parent directory if needed
-        dest_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Skip if file already exists
-        if dest_path.exists():
-            print(f"  {CHECKMARK} {dest_path.name} already exists")
-            return True
-
         print(f"  {DOWNLOAD} Downloading {dest_path.name}...", end=" ")
 
         response = None
@@ -168,6 +167,39 @@ def download_file(url: str, dest_path: Path, session: requests.Session | None = 
         if dest_path.exists():
             dest_path.unlink()
         return False
+
+
+def download_file(url: str, dest_path: Path, session: requests.Session | None = None) -> bool:
+    """Download a file with progress indicator.
+
+    Tries the given URL first. If it is a huggingface.co URL and the download
+    fails (including after exhausting the HTTP 429 retries), the whole download
+    is retried against the hf-mirror.com mirror for another round of attempts.
+    """
+    if session is None:
+        session = requests.Session()
+
+    # Create parent directory if needed
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Skip if file already exists
+    if dest_path.exists():
+        print(f"  {CHECKMARK} {dest_path.name} already exists")
+        return True
+
+    # Try the primary host first, then fall back to the hf-mirror.com mirror.
+    candidate_urls = [url]
+    mirror_url = _mirror_url(url)
+    if mirror_url:
+        candidate_urls.append(mirror_url)
+
+    for attempt_index, candidate_url in enumerate(candidate_urls):
+        if attempt_index > 0:
+            print(f"  {WARNING} Falling back to hf-mirror.com for {dest_path.name}...")
+        if _download_from_url(candidate_url, dest_path, session):
+            return True
+
+    return False
 
 
 def get_hf_api_files(repo_id: str) -> list[str]:

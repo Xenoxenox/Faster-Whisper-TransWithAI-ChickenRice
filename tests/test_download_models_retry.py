@@ -102,5 +102,63 @@ class DownloadFileRetryTests(unittest.TestCase):
         self.assertEqual(len(session.calls), download_models.DOWNLOAD_MAX_RETRIES + 1)
 
 
+class DownloadFileMirrorTests(unittest.TestCase):
+    PRIMARY_URL = "https://huggingface.co/owner/repo/resolve/main/model.onnx"
+    MIRROR_URL = "https://hf-mirror.com/owner/repo/resolve/main/model.onnx"
+
+    def test_falls_back_to_hf_mirror_after_primary_exhausts_retries(self) -> None:
+        primary_responses = [FakeResponse(429) for _ in range(download_models.DOWNLOAD_MAX_RETRIES + 1)]
+        mirror_response = FakeResponse(200, b"mirror-data", {"content-length": "11"})
+        session = FakeSession([*primary_responses, mirror_response])
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dest_path = Path(tmp_dir) / "model.onnx"
+            with patch("download_models.time.sleep"):
+                self.assertTrue(download_models.download_file(self.PRIMARY_URL, dest_path, session))
+
+            self.assertEqual(dest_path.read_bytes(), b"mirror-data")
+
+        called_urls = [call[0] for call in session.calls]
+        self.assertEqual(called_urls.count(self.PRIMARY_URL), download_models.DOWNLOAD_MAX_RETRIES + 1)
+        self.assertEqual(called_urls[-1], self.MIRROR_URL)
+
+    def test_falls_back_to_hf_mirror_on_non_429_error(self) -> None:
+        session = FakeSession(
+            [
+                FakeResponse(500),
+                FakeResponse(200, b"ok", {"content-length": "2"}),
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dest_path = Path(tmp_dir) / "model.onnx"
+            self.assertTrue(download_models.download_file(self.PRIMARY_URL, dest_path, session))
+            self.assertEqual(dest_path.read_bytes(), b"ok")
+
+        self.assertEqual([call[0] for call in session.calls], [self.PRIMARY_URL, self.MIRROR_URL])
+
+    def test_mirror_failure_removes_partial_file_after_both_hosts_exhausted(self) -> None:
+        responses = [FakeResponse(429) for _ in range(2 * (download_models.DOWNLOAD_MAX_RETRIES + 1))]
+        session = FakeSession(responses)
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dest_path = Path(tmp_dir) / "model.onnx"
+            with patch("download_models.time.sleep"):
+                self.assertFalse(download_models.download_file(self.PRIMARY_URL, dest_path, session))
+
+            self.assertFalse(dest_path.exists())
+
+        self.assertEqual(len(session.calls), 2 * (download_models.DOWNLOAD_MAX_RETRIES + 1))
+
+    def test_non_huggingface_url_has_no_mirror_fallback(self) -> None:
+        session = FakeSession([FakeResponse(500)])
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dest_path = Path(tmp_dir) / "model.onnx"
+            self.assertFalse(download_models.download_file("https://example.test/model.onnx", dest_path, session))
+
+        self.assertEqual(len(session.calls), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
