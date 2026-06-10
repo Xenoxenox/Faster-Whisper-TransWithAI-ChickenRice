@@ -20,7 +20,8 @@ High-performance audio/video transcription and translation tool - Japanese-to-Ch
 ## 🙏 致谢 / Acknowledgments
 
 - 🚀 基于 [SYSTRAN/faster-whisper](https://github.com/SYSTRAN/faster-whisper) 开发
-- 🐔 使用 [chickenrice0721/whisper-large-v2-translate-zh-v0.2-st](https://huggingface.co/chickenrice0721/whisper-large-v2-translate-zh-v0.2-st) 日文转中文优化模型
+- 🐔 使用 [chickenrice0721/whisper-large-v2-translate-zh-v0.2-st-ct2](https://huggingface.co/chickenrice0721/whisper-large-v2-translate-zh-v0.2-st-ct2) 日文转中文优化模型
+- 📝 可使用 [Jim6789/whisper-ja-1.5B-ct2](https://huggingface.co/Jim6789/whisper-ja-1.5B-ct2) 日文原文转录模型
 - 🔊 使用 [TransWithAI/Whisper-Vad-EncDec-ASMR-onnx](https://huggingface.co/TransWithAI/Whisper-Vad-EncDec-ASMR-onnx) 音声优化 VAD 模型
 - ☁️ 感谢 [@Randomless](https://github.com/Randomless) 贡献 Modal 云端推理功能
 - 💪 **感谢某匿名群友的算力和技术支持**
@@ -37,15 +38,28 @@ High-performance audio/video transcription and translation tool - Japanese-to-Ch
 
 ## 📦 版本说明 / Package Variants
 
-### 基础版 (Base Package) - 约 2.2GB
+### 无主模型版 (No-Model Package)
 - ✅ 所有 GPU 依赖项
 - ✅ 音声优化 VAD（语音活动检测）模型
-- ❌ 不含 Whisper 模型（需自行下载）
+- ✅ whisper-base 特征提取文件（离线使用）
+- ✅ 翻译和转录两套 `.bat` 启动脚本
+- ❌ 不含主 Whisper 模型（需自行下载或替换）
 
-### 海南鸡版 (ChickenRice Edition) - 约 4.4GB
+默认 `.bat` 会从 `models/` 根目录加载主模型；如果模型保存在 `models/模型文件夹/`，请给对应 `.bat` 添加 `--model_name_or_path="models\模型文件夹"`。
+
+### 翻译版 (Translate Package)
 - ✅ 所有 GPU 依赖项
 - ✅ 音声优化 VAD（语音活动检测）模型
+- ✅ whisper-base 特征提取文件（离线使用）
 - ✅ **"海南鸡v2 5000小时"** 日文转中文优化模型（开箱即用）
+- ✅ 仅包含翻译 `.bat` 启动脚本
+
+### 转录版 (Transcribe Package)
+- ✅ 所有 GPU 依赖项
+- ✅ 音声优化 VAD（语音活动检测）模型
+- ✅ whisper-base 特征提取文件（离线使用）
+- ✅ **Jim6789/whisper-ja-1.5B-ct2** 日文原文转录模型（开箱即用）
+- ✅ 仅包含转录 `.bat` 启动脚本
 
 ## 🚀 快速开始 / Quick Start
 
@@ -109,9 +123,9 @@ For AMD GPU users (Windows): download the ZIP matching your GPU's `gfx` family. 
 
 </details>
 
-使用方式与 NVIDIA 版本相同，运行 `运行(GPU).bat` 即可（内部使用 `--device=cuda`，这是 CTranslate2 HIP 后端的约定）。命令行也可使用 `--device=amd`（等同于 `--device=cuda`）。
+使用方式与 NVIDIA 版本相同，运行 `运行(翻译)(GPU).bat` 或 `运行(转录)(GPU).bat` 即可（内部使用 `--device=cuda`，这是 CTranslate2 HIP 后端的约定）。命令行也可使用 `--device=amd`（等同于 `--device=cuda`）。
 
-Usage is the same as NVIDIA builds — just run `运行(GPU).bat` (internally uses `--device=cuda`, which is CTranslate2's HIP convention). CLI also accepts `--device=amd` (alias for `--device=cuda`).
+Usage is the same as NVIDIA builds — just run `运行(翻译)(GPU).bat` or `运行(转录)(GPU).bat` (internally uses `--device=cuda`, which is CTranslate2's HIP convention). CLI also accepts `--device=amd` (alias for `--device=cuda`).
 
 ### 2. 下载对应版本 / Download
 
@@ -122,17 +136,20 @@ Usage is the same as NVIDIA builds — just run `运行(GPU).bat` (internally us
 将音视频文件拖放到相应的批处理文件：
 
 ```bash
-# GPU模式（推荐，显存≥6GB）
-运行(GPU).bat
+# 翻译 GPU模式（推荐，显存≥6GB）
+运行(翻译)(GPU).bat
 
-# GPU低显存模式（显存4GB）
-运行(GPU,低显存模式).bat
+# 翻译 GPU低显存模式（int8_float16，显存4GB）
+运行(翻译)(GPU,低显存模式).bat
 
-# CPU模式（无显卡用户）
-运行(CPU).bat
+# 翻译 CPU模式（无显卡用户）
+运行(翻译)(CPU).bat
 
-# 视频专用模式
-运行(翻译视频)(GPU).bat
+# 转录 GPU模式
+运行(转录)(GPU).bat
+
+# 转录 CPU模式
+运行(转录)(CPU).bat
 ```
 
 ## ☁️ Modal 云端推理 / Cloud Inference
@@ -221,7 +238,8 @@ python modal_infer.py
 ## 🔗 相关链接 / Links
 
 - **Faster Whisper**: https://github.com/SYSTRAN/faster-whisper
-- **海南鸡模型**: https://huggingface.co/chickenrice0721/whisper-large-v2-translate-zh-v0.2-st
+- **海南鸡模型**: https://huggingface.co/chickenrice0721/whisper-large-v2-translate-zh-v0.2-st-ct2
+- **Jim 日文转录模型**: https://huggingface.co/Jim6789/whisper-ja-1.5B-ct2
 - **音声优化 VAD 模型**: https://huggingface.co/TransWithAI/Whisper-Vad-EncDec-ASMR-onnx
 - **OpenAI Whisper**: https://github.com/openai/whisper
 - **Modal 云端平台**: https://modal.com/

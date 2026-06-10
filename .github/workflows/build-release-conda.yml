@@ -1,8 +1,9 @@
 name: Build and Release with Conda
 
 # Release pipeline: builds every Windows variant and publishes a GitHub Release.
-# Triggered only on version tags (and manual dispatch). Plain build-and-check on
-# pushes/PRs is handled by ci.yml, which reuses the same build workflow.
+# Triggered on version tags, or manually when release_version is provided.
+# Plain build-and-check on pushes/PRs is handled by ci.yml, which reuses the
+# same build workflow.
 on:
   push:
     tags:
@@ -14,7 +15,7 @@ on:
         required: false
         type: string
       include_chickenrice:
-        description: 'Include Chickenrice model in releases'
+        description: 'Deprecated and ignored; all model variants are included'
         required: false
         type: boolean
         default: false
@@ -34,7 +35,7 @@ jobs:
     name: Create GitHub Release
     needs: [build-windows]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.release_version != ''
     permissions:
       contents: write
     outputs:
@@ -68,8 +69,8 @@ jobs:
       uses: ading2210/gh-large-releases@v1
       with:
         repository: ${{ github.repository }}
-        tag_name: ${{ github.ref }}
-        name: ${{ github.ref_name }}
+        tag_name: ${{ inputs.release_version || github.ref_name }}
+        name: ${{ inputs.release_version || github.ref_name }}
         body: ${{ steps.read_body.outputs.body }}
         draft: false
         prerelease: false
@@ -79,444 +80,62 @@ jobs:
     - name: Set output
       run: echo "release_created=true" >> $GITHUB_OUTPUT
 
-  # Parallel upload jobs - each handles one artifact
-  upload-cu118:
-    name: Upload CUDA 11.8 Base
+  # Parallel upload matrix - each row handles one build/model artifact.
+  upload-assets:
+    name: Upload ${{ matrix.build.label }} ${{ matrix.model.label }}
     needs: [create-release]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.release_version != ''
     permissions:
       contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        build:
+          - suffix: cu118
+            label: CUDA 11.8
+          - suffix: cu122
+            label: CUDA 12.2
+          - suffix: cu128
+            label: CUDA 12.8
+          - suffix: gfx101x_dgpu
+            label: AMD gfx101X
+          - suffix: gfx103x_dgpu
+            label: AMD gfx103X
+          - suffix: gfx110x_all
+            label: AMD gfx110X
+          - suffix: gfx120x_all
+            label: AMD gfx120X
+        model:
+          - suffix: nomodel
+            label: No Model
+          - suffix: translate
+            label: Translate
+          - suffix: transcribe
+            label: Transcribe
 
     steps:
     - name: Download artifact
       uses: actions/download-artifact@v6
       with:
-        name: faster_whisper_transwithai_windows_cu118
+        name: faster_whisper_transwithai_windows_${{ matrix.build.suffix }}-${{ matrix.model.suffix }}
         path: artifact/
 
     - name: Create archive with optimized compression
       run: |
+        archive_name="faster_whisper_transwithai_windows_${{ matrix.build.suffix }}-${{ matrix.model.suffix }}.zip"
         cd artifact
-        echo "Creating archive for CUDA 11.8 base variant..."
-        # Using compression level 5 for faster builds (was level 9)
-        # Level 5 provides good balance between speed and compression ratio
-        zip -5 -r -q ../faster_whisper_transwithai_windows_cu118.zip .
+        echo "Creating archive for ${{ matrix.build.label }} ${{ matrix.model.label }} variant..."
+        # Using compression level 5 for faster builds (was level 9).
+        # Level 5 provides good balance between speed and compression ratio.
+        zip -5 -r -q "../$archive_name" .
         cd ..
-        echo "Archive created: $(ls -lh faster_whisper_transwithai_windows_cu118.zip | awk '{print $5}')"
+        echo "Archive created: $(ls -lh "$archive_name" | awk '{print $5}')"
 
     - name: Upload to release with large file support
       uses: ading2210/gh-large-releases@v1
       with:
         repository: ${{ github.repository }}
-        tag_name: ${{ github.ref }}
-        files: faster_whisper_transwithai_windows_cu118.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-  upload-cu118-chickenrice:
-    name: Upload CUDA 11.8 Chickenrice
-    needs: [create-release]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v6
-      with:
-        name: faster_whisper_transwithai_windows_cu118-chickenrice
-        path: artifact/
-
-    - name: Create archive with optimized compression
-      run: |
-        cd artifact
-        echo "Creating archive for CUDA 11.8 chickenrice variant..."
-        # Using compression level 5 for faster builds (was level 9)
-        zip -5 -r -q ../faster_whisper_transwithai_windows_cu118-chickenrice.zip .
-        cd ..
-        echo "Archive created: $(ls -lh faster_whisper_transwithai_windows_cu118-chickenrice.zip | awk '{print $5}')"
-
-    - name: Upload to release with large file support
-      uses: ading2210/gh-large-releases@v1
-      with:
-        repository: ${{ github.repository }}
-        tag_name: ${{ github.ref }}
-        files: faster_whisper_transwithai_windows_cu118-chickenrice.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-  upload-cu122:
-    name: Upload CUDA 12.2 Base
-    needs: [create-release]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v6
-      with:
-        name: faster_whisper_transwithai_windows_cu122
-        path: artifact/
-
-    - name: Create archive with optimized compression
-      run: |
-        cd artifact
-        echo "Creating archive for CUDA 12.2 base variant..."
-        # Using compression level 5 for faster builds (was level 9)
-        zip -5 -r -q ../faster_whisper_transwithai_windows_cu122.zip .
-        cd ..
-        echo "Archive created: $(ls -lh faster_whisper_transwithai_windows_cu122.zip | awk '{print $5}')"
-
-    - name: Upload to release with large file support
-      uses: ading2210/gh-large-releases@v1
-      with:
-        repository: ${{ github.repository }}
-        tag_name: ${{ github.ref }}
-        files: faster_whisper_transwithai_windows_cu122.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-  upload-cu122-chickenrice:
-    name: Upload CUDA 12.2 Chickenrice
-    needs: [create-release]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v6
-      with:
-        name: faster_whisper_transwithai_windows_cu122-chickenrice
-        path: artifact/
-
-    - name: Create archive with optimized compression
-      run: |
-        cd artifact
-        echo "Creating archive for CUDA 12.2 chickenrice variant..."
-        # Using compression level 5 for faster builds (was level 9)
-        zip -5 -r -q ../faster_whisper_transwithai_windows_cu122-chickenrice.zip .
-        cd ..
-        echo "Archive created: $(ls -lh faster_whisper_transwithai_windows_cu122-chickenrice.zip | awk '{print $5}')"
-
-    - name: Upload to release with large file support
-      uses: ading2210/gh-large-releases@v1
-      with:
-        repository: ${{ github.repository }}
-        tag_name: ${{ github.ref }}
-        files: faster_whisper_transwithai_windows_cu122-chickenrice.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-  upload-cu128:
-    name: Upload CUDA 12.8 Base
-    needs: [create-release]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v6
-      with:
-        name: faster_whisper_transwithai_windows_cu128
-        path: artifact/
-
-    - name: Create archive with optimized compression
-      run: |
-        cd artifact
-        echo "Creating archive for CUDA 12.8 base variant..."
-        # Using compression level 5 for faster builds (was level 9)
-        zip -5 -r -q ../faster_whisper_transwithai_windows_cu128.zip .
-        cd ..
-        echo "Archive created: $(ls -lh faster_whisper_transwithai_windows_cu128.zip | awk '{print $5}')"
-
-    - name: Upload to release with large file support
-      uses: ading2210/gh-large-releases@v1
-      with:
-        repository: ${{ github.repository }}
-        tag_name: ${{ github.ref }}
-        files: faster_whisper_transwithai_windows_cu128.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-  upload-cu128-chickenrice:
-    name: Upload CUDA 12.8 Chickenrice
-    needs: [create-release]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v6
-      with:
-        name: faster_whisper_transwithai_windows_cu128-chickenrice
-        path: artifact/
-
-    - name: Create archive with optimized compression
-      run: |
-        cd artifact
-        echo "Creating archive for CUDA 12.8 chickenrice variant..."
-        # Using compression level 5 for faster builds (was level 9)
-        zip -5 -r -q ../faster_whisper_transwithai_windows_cu128-chickenrice.zip .
-        cd ..
-        echo "Archive created: $(ls -lh faster_whisper_transwithai_windows_cu128-chickenrice.zip | awk '{print $5}')"
-
-    - name: Upload to release with large file support
-      uses: ading2210/gh-large-releases@v1
-      with:
-        repository: ${{ github.repository }}
-        tag_name: ${{ github.ref }}
-        files: faster_whisper_transwithai_windows_cu128-chickenrice.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-  upload-amd-gfx101x:
-    name: Upload AMD gfx101X Base
-    needs: [create-release]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v6
-      with:
-        name: faster_whisper_transwithai_windows_gfx101x_dgpu
-        path: artifact/
-
-    - name: Create archive with optimized compression
-      run: |
-        cd artifact
-        echo "Creating archive for AMD gfx101X base variant..."
-        zip -5 -r -q ../faster_whisper_transwithai_windows_gfx101x_dgpu.zip .
-        cd ..
-        echo "Archive created: $(ls -lh faster_whisper_transwithai_windows_gfx101x_dgpu.zip | awk '{print $5}')"
-
-    - name: Upload to release with large file support
-      uses: ading2210/gh-large-releases@v1
-      with:
-        repository: ${{ github.repository }}
-        tag_name: ${{ github.ref }}
-        files: faster_whisper_transwithai_windows_gfx101x_dgpu.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-  upload-amd-gfx101x-chickenrice:
-    name: Upload AMD gfx101X Chickenrice
-    needs: [create-release]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v6
-      with:
-        name: faster_whisper_transwithai_windows_gfx101x_dgpu-chickenrice
-        path: artifact/
-
-    - name: Create archive with optimized compression
-      run: |
-        cd artifact
-        echo "Creating archive for AMD gfx101X chickenrice variant..."
-        zip -5 -r -q ../faster_whisper_transwithai_windows_gfx101x_dgpu-chickenrice.zip .
-        cd ..
-        echo "Archive created: $(ls -lh faster_whisper_transwithai_windows_gfx101x_dgpu-chickenrice.zip | awk '{print $5}')"
-
-    - name: Upload to release with large file support
-      uses: ading2210/gh-large-releases@v1
-      with:
-        repository: ${{ github.repository }}
-        tag_name: ${{ github.ref }}
-        files: faster_whisper_transwithai_windows_gfx101x_dgpu-chickenrice.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-  upload-amd-gfx103x:
-    name: Upload AMD gfx103X Base
-    needs: [create-release]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v6
-      with:
-        name: faster_whisper_transwithai_windows_gfx103x_dgpu
-        path: artifact/
-
-    - name: Create archive with optimized compression
-      run: |
-        cd artifact
-        echo "Creating archive for AMD gfx103X base variant..."
-        zip -5 -r -q ../faster_whisper_transwithai_windows_gfx103x_dgpu.zip .
-        cd ..
-        echo "Archive created: $(ls -lh faster_whisper_transwithai_windows_gfx103x_dgpu.zip | awk '{print $5}')"
-
-    - name: Upload to release with large file support
-      uses: ading2210/gh-large-releases@v1
-      with:
-        repository: ${{ github.repository }}
-        tag_name: ${{ github.ref }}
-        files: faster_whisper_transwithai_windows_gfx103x_dgpu.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-  upload-amd-gfx103x-chickenrice:
-    name: Upload AMD gfx103X Chickenrice
-    needs: [create-release]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v6
-      with:
-        name: faster_whisper_transwithai_windows_gfx103x_dgpu-chickenrice
-        path: artifact/
-
-    - name: Create archive with optimized compression
-      run: |
-        cd artifact
-        echo "Creating archive for AMD gfx103X chickenrice variant..."
-        zip -5 -r -q ../faster_whisper_transwithai_windows_gfx103x_dgpu-chickenrice.zip .
-        cd ..
-        echo "Archive created: $(ls -lh faster_whisper_transwithai_windows_gfx103x_dgpu-chickenrice.zip | awk '{print $5}')"
-
-    - name: Upload to release with large file support
-      uses: ading2210/gh-large-releases@v1
-      with:
-        repository: ${{ github.repository }}
-        tag_name: ${{ github.ref }}
-        files: faster_whisper_transwithai_windows_gfx103x_dgpu-chickenrice.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-  upload-amd-gfx110x:
-    name: Upload AMD gfx110X Base
-    needs: [create-release]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v6
-      with:
-        name: faster_whisper_transwithai_windows_gfx110x_all
-        path: artifact/
-
-    - name: Create archive with optimized compression
-      run: |
-        cd artifact
-        echo "Creating archive for AMD gfx110X base variant..."
-        zip -5 -r -q ../faster_whisper_transwithai_windows_gfx110x_all.zip .
-        cd ..
-        echo "Archive created: $(ls -lh faster_whisper_transwithai_windows_gfx110x_all.zip | awk '{print $5}')"
-
-    - name: Upload to release with large file support
-      uses: ading2210/gh-large-releases@v1
-      with:
-        repository: ${{ github.repository }}
-        tag_name: ${{ github.ref }}
-        files: faster_whisper_transwithai_windows_gfx110x_all.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-  upload-amd-gfx110x-chickenrice:
-    name: Upload AMD gfx110X Chickenrice
-    needs: [create-release]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v6
-      with:
-        name: faster_whisper_transwithai_windows_gfx110x_all-chickenrice
-        path: artifact/
-
-    - name: Create archive with optimized compression
-      run: |
-        cd artifact
-        echo "Creating archive for AMD gfx110X chickenrice variant..."
-        zip -5 -r -q ../faster_whisper_transwithai_windows_gfx110x_all-chickenrice.zip .
-        cd ..
-        echo "Archive created: $(ls -lh faster_whisper_transwithai_windows_gfx110x_all-chickenrice.zip | awk '{print $5}')"
-
-    - name: Upload to release with large file support
-      uses: ading2210/gh-large-releases@v1
-      with:
-        repository: ${{ github.repository }}
-        tag_name: ${{ github.ref }}
-        files: faster_whisper_transwithai_windows_gfx110x_all-chickenrice.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-  upload-amd-gfx120x:
-    name: Upload AMD gfx120X Base
-    needs: [create-release]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v6
-      with:
-        name: faster_whisper_transwithai_windows_gfx120x_all
-        path: artifact/
-
-    - name: Create archive with optimized compression
-      run: |
-        cd artifact
-        echo "Creating archive for AMD gfx120X base variant..."
-        zip -5 -r -q ../faster_whisper_transwithai_windows_gfx120x_all.zip .
-        cd ..
-        echo "Archive created: $(ls -lh faster_whisper_transwithai_windows_gfx120x_all.zip | awk '{print $5}')"
-
-    - name: Upload to release with large file support
-      uses: ading2210/gh-large-releases@v1
-      with:
-        repository: ${{ github.repository }}
-        tag_name: ${{ github.ref }}
-        files: faster_whisper_transwithai_windows_gfx120x_all.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-  upload-amd-gfx120x-chickenrice:
-    name: Upload AMD gfx120X Chickenrice
-    needs: [create-release]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v6
-      with:
-        name: faster_whisper_transwithai_windows_gfx120x_all-chickenrice
-        path: artifact/
-
-    - name: Create archive with optimized compression
-      run: |
-        cd artifact
-        echo "Creating archive for AMD gfx120X chickenrice variant..."
-        zip -5 -r -q ../faster_whisper_transwithai_windows_gfx120x_all-chickenrice.zip .
-        cd ..
-        echo "Archive created: $(ls -lh faster_whisper_transwithai_windows_gfx120x_all-chickenrice.zip | awk '{print $5}')"
-
-    - name: Upload to release with large file support
-      uses: ading2210/gh-large-releases@v1
-      with:
-        repository: ${{ github.repository }}
-        tag_name: ${{ github.ref }}
-        files: faster_whisper_transwithai_windows_gfx120x_all-chickenrice.zip
+        tag_name: ${{ inputs.release_version || github.ref_name }}
+        files: faster_whisper_transwithai_windows_${{ matrix.build.suffix }}-${{ matrix.model.suffix }}.zip
         token: ${{ secrets.GITHUB_TOKEN }}

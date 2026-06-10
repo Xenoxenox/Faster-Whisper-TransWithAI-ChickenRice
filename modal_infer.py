@@ -100,6 +100,7 @@ class ModelProfile:
     hf_repo: str | None
     target_dir: str | None
     description: str
+    task: str = "translate"
 
 
 @dataclass
@@ -171,6 +172,14 @@ MODEL_PRESETS: dict[str, ModelProfile] = {
         hf_repo="chickenrice0721/whisper-large-v2-translate-zh-v0.2-st-ct2",
         target_dir="chickenrice-v2",
         description="默认高精度模型，建议 L40S 以上",
+    ),
+    "jim-ja-transcribe": ModelProfile(
+        key="jim-ja-transcribe",
+        label="Jim 日文转录（whisper-ja-1.5B）",
+        hf_repo="Jim6789/whisper-ja-1.5B-ct2",
+        target_dir="whisper-ja-1.5B-ct2",
+        description="日文原文转录模型，建议 L40S 以上",
+        task="transcribe",
     ),
     "base": ModelProfile(
         key="base",
@@ -395,6 +404,7 @@ def build_job_payload(selection: UserSelection, manifest: UploadManifest) -> dic
             "label": model_profile.label,
             "hf_repo": hf_repo,
             "target_dir": target_dir,
+            "task": model_profile.task,
         },
         "remote_logs_dir": rel_to_container_path(manifest.remote_logs_rel),
         "output_suffixes": list(SUB_SUFFIXES),
@@ -711,6 +721,8 @@ def _remote_pipeline(job: dict) -> dict:
         str(model_path),
         "--sub_formats",
         job["sub_formats"],
+        "--task",
+        model_profile.get("task", "translate"),
         "--log_level",
         "INFO",
         "--output_dir",

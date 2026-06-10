@@ -16,41 +16,54 @@
 
 ### 🎯 版本类型说明
 
-#### 基础版（Base Package）
-- **下载大小**：约 2.2GB
+#### 无主模型版（No-Model Package）
+- **文件后缀**：`-nomodel`
 - **包含内容**：
   - ✅ 所有 GPU 依赖项
   - ✅ 音声优化 VAD（语音活动检测）ONNX 模型
-  - ❌ 不含 Whisper 模型（需自行下载）
+  - ✅ whisper-base 特征提取文件（离线使用）
+  - ✅ 翻译和转录两套 `.bat` 启动脚本
+  - ❌ 不含主 Whisper 模型（需自行下载或替换）
 - **适用场景**：需要使用自定义模型的用户
 
-#### 海南鸡版（Chickenrice Edition）
-- **下载大小**：约 4.4GB
+#### 翻译版（Translate Package）
+- **文件后缀**：`-translate`
 - **包含内容**：
   - ✅ 所有 GPU 依赖项
   - ✅ 音声优化 VAD（语音活动检测）ONNX 模型
+  - ✅ whisper-base 特征提取文件（离线使用）
   - ✅ **"海南鸡v2 5000小时"** 日文转中文优化模型
+  - ✅ 仅包含翻译 `.bat` 启动脚本
 - **适用场景**：开箱即用的日文转中文翻译
 - **模型说明**：包含经过5000小时音频数据训练的海南鸡v2版本模型，专门优化日文转中文翻译
 
+#### 转录版（Transcribe Package）
+- **文件后缀**：`-transcribe`
+- **包含内容**：
+  - ✅ 所有 GPU 依赖项
+  - ✅ 音声优化 VAD（语音活动检测）ONNX 模型
+  - ✅ whisper-base 特征提取文件（离线使用）
+  - ✅ **Jim6789/whisper-ja-1.5B-ct2** 日文原文转录模型
+  - ✅ 仅包含转录 `.bat` 启动脚本
+- **适用场景**：开箱即用的日文原文转录
+
 ### 📌 文件命名规则
 
-| 文件名后缀 | CUDA/ROCm | 模型类型 |
+| 文件名格式 | CUDA/ROCm | 模型类型 |
 |-----------|---------|---------|
-| `*_cu118.zip` | CUDA 11.8 | 基础版 |
-| `*_cu118-chickenrice.zip` | CUDA 11.8 | 海南鸡版 |
-| `*_cu122.zip` | CUDA 12.2 | 基础版 |
-| `*_cu122-chickenrice.zip` | CUDA 12.2 | 海南鸡版 |
-| `*_cu128.zip` | CUDA 12.8 | 基础版 |
-| `*_cu128-chickenrice.zip` | CUDA 12.8 | 海南鸡版 |
-| `*_gfx101x_dgpu.zip` | AMD ROCm/HIP (gfx101X) | 基础版 |
-| `*_gfx101x_dgpu-chickenrice.zip` | AMD ROCm/HIP (gfx101X) | 海南鸡版 |
-| `*_gfx103x_dgpu.zip` | AMD ROCm/HIP (gfx103X) | 基础版 |
-| `*_gfx103x_dgpu-chickenrice.zip` | AMD ROCm/HIP (gfx103X) | 海南鸡版 |
-| `*_gfx110x_all.zip` | AMD ROCm/HIP (gfx110X) | 基础版 |
-| `*_gfx110x_all-chickenrice.zip` | AMD ROCm/HIP (gfx110X) | 海南鸡版 |
-| `*_gfx120x_all.zip` | AMD ROCm/HIP (gfx120X) | 基础版 |
-| `*_gfx120x_all-chickenrice.zip` | AMD ROCm/HIP (gfx120X) | 海南鸡版 |
+| `*_cu118-nomodel.zip` | CUDA 11.8 | 无主模型版 |
+| `*_cu118-translate.zip` | CUDA 11.8 | 翻译版 |
+| `*_cu118-transcribe.zip` | CUDA 11.8 | 转录版 |
+| `*_cu122-nomodel.zip` | CUDA 12.2 | 无主模型版 |
+| `*_cu122-translate.zip` | CUDA 12.2 | 翻译版 |
+| `*_cu122-transcribe.zip` | CUDA 12.2 | 转录版 |
+| `*_cu128-nomodel.zip` | CUDA 12.8 | 无主模型版 |
+| `*_cu128-translate.zip` | CUDA 12.8 | 翻译版 |
+| `*_cu128-transcribe.zip` | CUDA 12.8 | 转录版 |
+| `*_gfx101x_dgpu-{nomodel,translate,transcribe}.zip` | AMD ROCm/HIP (gfx101X) | 三种模型类型 |
+| `*_gfx103x_dgpu-{nomodel,translate,transcribe}.zip` | AMD ROCm/HIP (gfx103X) | 三种模型类型 |
+| `*_gfx110x_all-{nomodel,translate,transcribe}.zip` | AMD ROCm/HIP (gfx110X) | 三种模型类型 |
+| `*_gfx120x_all-{nomodel,translate,transcribe}.zip` | AMD ROCm/HIP (gfx120X) | 三种模型类型 |
 
 > AMD 版本仍然使用 `--device=cuda`（这是 CTranslate2 在 HIP/ROCm 后端下的公开 API 约定）。命令行也可使用 `--device=amd`（等同于 `--device=cuda`）。
 > 暂不提供 `gfx115x` iGPU/mobile 版本（请使用 CPU 版或 Modal 云端推理）。
@@ -121,34 +134,51 @@ AMD 显卡用户请下载带有 `gfx***` 后缀的版本。AMD 版本已内置 R
 
 ## 📥 模型下载说明
 
-### 基础版用户（需自行下载模型）
+### 无主模型版用户（需自行下载模型）
 
-基础版包含VAD模型，但**不包含**Whisper语音识别模型。您需要：
+无主模型版包含VAD模型和两套启动脚本，但**不包含**主 Whisper 语音识别/翻译模型。您需要：
 
 1. **从 Hugging Face 下载模型**
-   - 示例模型地址：https://huggingface.co/chickenrice0721/whisper-large-v2-translate-zh-v0.2-st
+   - 示例模型地址：https://huggingface.co/chickenrice0721/whisper-large-v2-translate-zh-v0.2-st-ct2
    - 这是"海南鸡v2 5000小时"版本的日文转中文优化模型
+   - 日文转录模型地址：https://huggingface.co/Jim6789/whisper-ja-1.5B-ct2
 
 2. **放置模型文件**
    ```
-   将下载的模型文件放入：
+   如不修改 .bat，请将模型文件直接放入：
    faster_whisper_transwithai_chickenrice/
    └── models/
-       └── [您下载的模型文件夹]/
+       ├── config.json
+       ├── model.bin / model.safetensors
+       └── ...
    ```
+
+   如果保留 `models\模型文件夹\` 结构，请在对应 `.bat` 的 `infer.exe` 后加入：
+   `--model_name_or_path="models\模型文件夹"`
 
 3. **其他可用模型**
    - OpenAI Whisper官方模型
    - 其他社区优化模型
 
-### 海南鸡版用户（开箱即用）
+### 翻译版用户（开箱即用）
 
-海南鸡版已包含：
+翻译版已包含：
 - ✅ 音声优化 VAD 语音活动检测模型
+- ✅ whisper-base 特征提取文件（离线使用）
 - ✅ "海南鸡v2 5000小时"日文转中文优化版Whisper模型
 - ✅ 所有必要的配置文件
 
 **无需额外下载**，解压后直接运行即可使用！
+
+### 转录版用户（开箱即用）
+
+转录版已包含：
+- ✅ 音声优化 VAD 语音活动检测模型
+- ✅ whisper-base 特征提取文件（离线使用）
+- ✅ Jim6789/whisper-ja-1.5B-ct2 日文原文转录模型
+- ✅ 所有必要的配置文件
+
+**无需额外下载**，解压后直接运行 `运行(转录)...bat` 即可使用！
 
 ---
 
@@ -158,19 +188,26 @@ AMD 显卡用户请下载带有 `gfx***` 后缀的版本。AMD 版本已内置 R
 根据上述表格，选择适合您显卡的CUDA版本
 
 ### 2. 下载对应版本
-- 仅转录/翻译：下载基础版 + 自行下载模型
-- 日文转中文优化：下载海南鸡版（推荐）
+- 自定义模型：下载无主模型版（`-nomodel`）+ 自行下载模型
+- 日文转中文：下载翻译版（`-translate`）
+- 日文原文转录：下载转录版（`-transcribe`）
 
 ### 3. 解压并运行
 ```bash
-# GPU模式（推荐）
-将音视频文件拖放到 "运行(GPU).bat"
+# 翻译 GPU模式（推荐）
+将音视频文件拖放到 "运行(翻译)(GPU).bat"
 
-# CPU模式（无显卡用户）
-将音视频文件拖放到 "运行(CPU).bat"
+# 翻译 CPU模式（无显卡用户）
+将音视频文件拖放到 "运行(翻译)(CPU).bat"
 
-# 低显存模式（4GB显存）
-将音视频文件拖放到 "运行(GPU,低显存模式).bat"
+# 转录 GPU模式
+将音视频文件拖放到 "运行(转录)(GPU).bat"
+
+# 转录 CPU模式
+将音视频文件拖放到 "运行(转录)(CPU).bat"
+
+# 低显存模式（int8_float16，4GB显存）
+将音视频文件拖放到 "运行(翻译)(GPU,低显存模式).bat"
 ```
 
 ---
@@ -180,8 +217,8 @@ AMD 显卡用户请下载带有 `gfx***` 后缀的版本。AMD 版本已内置 R
 **Q: 我应该选择哪个CUDA版本？**
 A: 运行 `nvidia-smi` 查看您的驱动版本，然后对照上表选择。
 
-**Q: 海南鸡版和基础版有什么区别？**
-A: 海南鸡版包含预训练的日文转中文优化模型（5000小时训练），基础版需要自行下载模型。
+**Q: 三种模型包有什么区别？**
+A: 无主模型版不含主 Whisper 模型但包含两套启动脚本；翻译版包含海南鸡日文转中文模型和翻译脚本；转录版包含 Jim 日文转录模型和转录脚本。
 
 **Q: RTX 4090 应该用哪个版本？**
 A: 推荐使用 CUDA 12.2 或 12.8 版本，取决于您的驱动版本。
@@ -240,7 +277,7 @@ A: 使用"低显存模式"批处理文件，或切换到CPU模式。
 - 🎯 **手动批次大小控制**：支持通过 --batch_size 参数手动指定批次大小，跳过自动检测
 - 🔧 **运行时自适应调整**：处理过程中如遇到显存不足（OOM），自动降低批次大小（每次减少20%）继续处理
 - 📈 **最大批次大小配置**：通过 --max_batch_size 参数控制自动检测的上限（默认8，可根据显存调整）
-- 📦 **新增高显存加速模式**：提供 "运行(GPU,高显存加速模式).bat" 专门为8GB+显存用户优化
+- 📦 **新增高显存加速模式**：提供 "运行(翻译)(GPU,高显存加速模式).bat" 专门为8GB+显存用户优化
 - 🔨 **修复批处理兼容性**：应用补丁修复faster-whisper批处理的max_initial_timestamp参数传递问题
 - 🌐 **批处理日志国际化**：为批处理功能添加完整的中英文本地化消息，便于调试和使用
 
@@ -253,7 +290,7 @@ A: 使用"低显存模式"批处理文件，或切换到CPU模式。
   - 长音频文件：防止错误累积效应
 
 **🎮 使用建议**：
-- 8GB+ 显存：使用 "运行(GPU,高显存加速模式).bat"，自动检测最优批次大小
+- 8GB+ 显存：使用 "运行(翻译)(GPU,高显存加速模式).bat"，自动检测最优批次大小
 - 4-8GB 显存：手动设置较小批次大小，如 --batch_size=2 或 4
 - 追求最高精度：使用常规模式（不加 --enable_batching 参数）
 - 追求处理速度：启用批处理模式，接受轻微的精度权衡
@@ -299,6 +336,8 @@ A: 使用"低显存模式"批处理文件，或切换到CPU模式。
 
 ### 🔗 官方链接
 - **GitHub仓库**: https://github.com/TransWithAI/Faster-Whisper-TransWithAI-ChickenRice
+- **海南鸡翻译模型**: https://huggingface.co/chickenrice0721/whisper-large-v2-translate-zh-v0.2-st-ct2
+- **Jim 日文转录模型**: https://huggingface.co/Jim6789/whisper-ja-1.5B-ct2
 - **音声优化 VAD 模型**: https://huggingface.co/TransWithAI/Whisper-Vad-EncDec-ASMR-onnx
 - **Telegram群组**: https://t.me/transWithAI
 - **开发团队**: AI汉化组
@@ -308,7 +347,8 @@ A: 使用"低显存模式"批处理文件，或切换到CPU模式。
 ## 🙏 致谢
 
 - 🚀 基于 [SYSTRAN/faster-whisper](https://github.com/SYSTRAN/faster-whisper) 开发
-- 🐔 使用 [chickenrice0721/whisper-large-v2-translate-zh-v0.2-st](https://huggingface.co/chickenrice0721/whisper-large-v2-translate-zh-v0.2-st) 日文转中文优化模型
+- 🐔 使用 [chickenrice0721/whisper-large-v2-translate-zh-v0.2-st-ct2](https://huggingface.co/chickenrice0721/whisper-large-v2-translate-zh-v0.2-st-ct2) 日文转中文优化模型
+- 📝 可使用 [Jim6789/whisper-ja-1.5B-ct2](https://huggingface.co/Jim6789/whisper-ja-1.5B-ct2) 日文原文转录模型
 - 🔊 使用 [TransWithAI/Whisper-Vad-EncDec-ASMR-onnx](https://huggingface.co/TransWithAI/Whisper-Vad-EncDec-ASMR-onnx) 音声优化 VAD 模型
 - 🎙️ [OpenAI Whisper](https://github.com/openai/whisper) 原始项目
 - ☁️ 感谢 [@Randomless](https://github.com/Randomless) 贡献 Modal 云端推理功能
