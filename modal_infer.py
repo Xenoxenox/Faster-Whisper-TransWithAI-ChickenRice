@@ -57,8 +57,7 @@ REMOTE_MOUNT = VOLUME_ROOT
 APP_ROOT_REL = APP_NAME
 SESSION_SUBDIR = "sessions"
 REPO_VOLUME_DIR = f"{VOLUME_ROOT}/repo"
-SUB_FORMATS = "srt,vtt,lrc"
-SUB_SUFFIXES = {".srt", ".vtt", ".lrc"}
+SUBTITLE_FORMATS = ("lrc", "vtt", "srt")
 AUDIO_SUFFIXES = {
     ".mp3",
     ".wav",
@@ -108,6 +107,7 @@ class UserSelection:
     run_mode: str  # once or persistent
     gpu_choice: str
     input_path: Path
+    subtitle_formats: list[str]
     model_profile: ModelProfile
     custom_repo: str | None
     custom_target_dir: str | None
@@ -261,6 +261,17 @@ def ask_selection() -> UserSelection:
     if not input_path.exists():
         raise FileNotFoundError(f"路径不存在：{input_path}")
 
+    subtitle_formats = questionary.checkbox(
+        "选择字幕文件格式（可多选）：",
+        choices=[
+            Choice(title=f".{format_name}", value=format_name, checked=format_name == "lrc")
+            for format_name in SUBTITLE_FORMATS
+        ],
+        validate=lambda formats: bool(formats) or "请至少选择一种字幕格式。",
+    ).ask()
+    if not subtitle_formats:
+        raise KeyboardInterrupt
+
     enable_batching = questionary.confirm("启用批处理以加速（需要更高显存）？", default=False).ask()
     if enable_batching is None:
         raise KeyboardInterrupt
@@ -280,6 +291,7 @@ def ask_selection() -> UserSelection:
         run_mode="once",
         gpu_choice=gpu_choice,
         input_path=input_path,
+        subtitle_formats=subtitle_formats,
         model_profile=model_profile,
         custom_repo=custom_repo,
         custom_target_dir=custom_target_dir,
@@ -382,6 +394,8 @@ def build_job_payload(selection: UserSelection, manifest: UploadManifest) -> dic
         selection.custom_target_dir if model_profile.key == "custom" else model_profile.target_dir
     ) or "custom-model"
 
+    subtitle_suffixes = [f".{format_name}" for format_name in selection.subtitle_formats]
+
     payload = {
         "session_id": manifest.session_id,
         "mount_root": str(REMOTE_MOUNT),
@@ -391,11 +405,11 @@ def build_job_payload(selection: UserSelection, manifest: UploadManifest) -> dic
         "output_targets": [
             {
                 "remote_dir": rel_to_container_path(manifest.remote_output_rel),
-                "extensions": list(SUB_SUFFIXES),
+                "extensions": subtitle_suffixes,
             }
         ],
         "input_mode": manifest.source_type,
-        "sub_formats": SUB_FORMATS,
+        "sub_formats": ",".join(selection.subtitle_formats),
         "enable_batching": selection.enable_batching,
         "batch_size": selection.batch_size,
         "max_batch_size": selection.max_batch_size,
@@ -407,7 +421,7 @@ def build_job_payload(selection: UserSelection, manifest: UploadManifest) -> dic
             "task": model_profile.task,
         },
         "remote_logs_dir": rel_to_container_path(manifest.remote_logs_rel),
-        "output_suffixes": list(SUB_SUFFIXES),
+        "output_suffixes": subtitle_suffixes,
     }
     return payload
 
@@ -802,11 +816,12 @@ def _remote_pipeline(job: dict) -> dict:
     import base64
 
     created_files = {}  # {filename: base64_content}
+    selected_suffixes = set(job["output_suffixes"])
     for target in job["output_targets"]:
         remote_dir = target["remote_dir"]
         after = snapshot(remote_dir)
         prev = before.get(remote_dir, set())
-        new_files = sorted(file for file in after - prev if Path(file).suffix.lower() in SUB_SUFFIXES)
+        new_files = sorted(file for file in after - prev if Path(file).suffix.lower() in selected_suffixes)
         for file_path in new_files:
             file_path = Path(file_path)
             if file_path.exists():
